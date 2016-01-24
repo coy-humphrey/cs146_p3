@@ -11,7 +11,7 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj):
         adj: An adjacency function returning cells adjacent to a given cell as well as their respective edge costs.
 
     Returns:
-        If a path exits, return a list containing all cells from initial_position to destination.
+        If a path exists, return a list containing all cells from initial_position to destination.
         Otherwise, return None.
 
     """
@@ -30,9 +30,9 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj):
         # Early termination check: if the destination is found, return the path
         if current_node == destination:
             node = destination
-            path = [node]
+            path = []
             while node is not None:
-                path.append(previous_cell[node])
+                path.append(node)
                 node = previous_cell[node]
             return path[::-1]
 
@@ -60,15 +60,18 @@ def contains_point (pnt, box):
     return (x1 < x and x < x2) and (y1 < y and y < y2)
 
 def find_path (src, dest, mesh):
+    src_box, dest_box = None, None
     for box in mesh['boxes']:
         if contains_point (src, box):
             src_box = box
         if contains_point (dest, box):
             dest_box = box
+    if not src_box or not dest_box:
+        print ("Bad source or destination")
+        return ([], [])
     path = dijkstras_shortest_path (src_box, dest_box, mesh, navigation_edges)
-    if not path[0]: path = path[1:]
-    output = "Source: {} ; Dest: {} ; Path: \n {}".format( str(src_box), str(dest_box), str(path) )
-    print (output)
+    if not path:
+        return ([], [])
     point_path = []
     for i in range(len(path) - 1):
         x1, y1 = midpoint(path[i])
