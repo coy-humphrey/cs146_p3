@@ -1,4 +1,5 @@
 from heapq import heappop, heappush
+from math import sqrt
 
 def dijkstras_shortest_path(initial_position, destination, graph, adj):
     """ Searches for a minimal cost path through a graph using Dijkstra's algorithm.
@@ -67,3 +68,54 @@ def find_path (src, dest, mesh):
 	path = dijkstras_shortest_path (src_box, dest_box, mesh, navigation_edges)
 	return ([src, dest], path)
 
+# Adapated from dist_Point_to_Segment in:
+# http://geomalgorithms.com/a02-_lines.html
+def shortest_path_to_segment (entry_point, segment):
+    """ Finds the point closest to entry_point on segment
+    Args:
+        entry_point: Starting point. A tuple containing (x, y)
+        segment: A line segment. A tuple containing ((x1, y1), (x2,y2))
+
+    Returns:
+        If a path exits, return a list containing all cells from initial_position to destination.
+        Otherwise, return None.
+    """
+    start, end = segment
+    v = vector_subtract (end, start)
+    w = vector_subtract (entry_point, start)
+
+    c1 = vector_dot (w, v)
+    if c1 <= 0:
+        return (start, vector_dist (entry_point, start))
+
+    c2 = vector_dot (v, v)
+    if (c2 <= c1):
+        return (end, vector_dist (entry_point, end))
+
+    b = c1 / float(c2)
+    Pb = vector_add (start, vector_scalar_multiply(b, v))
+    return (Pb, vector_dist (entry_point, Pb))
+
+def vector_subtract (p1, p2):
+    x1,y1 = p1
+    x2,y2 = p2
+    return (x1-x2, y1-y2)
+
+def vector_add (p1, p2):
+    x1,y1 = p1
+    x2,y2 = p2
+    return (x1+x2, y1+y2)
+
+def vector_scalar_multiply (scalar, vector):
+    x,y = vector
+    return (scalar * x, scalar * y)
+
+def vector_dot (p1, p2):
+    x1,y1 = p1
+    x2,y2 = p2
+    return x1*x2 + y1*y2
+
+def vector_dist (p1, p2):
+    x1,y1 = p1
+    x2,y2 = p2
+    return sqrt ((x2 - x1)**2 + (y2 - y1)**2)
