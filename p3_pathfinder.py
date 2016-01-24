@@ -51,22 +51,34 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj):
     return None
 
 def navigation_edges (mesh, box):
-	return [(new_box, 1) for new_box in mesh['adj'][box]]
+    return [(new_box, 1) for new_box in mesh['adj'][box]]
 
 
 def contains_point (pnt, box):
-	x,y = pnt
-	x1, x2, y1, y2 = box
-	return (x1 < x and x < x2) and (y1 < y and y < y2)
+    x,y = pnt
+    x1, x2, y1, y2 = box
+    return (x1 < x and x < x2) and (y1 < y and y < y2)
 
 def find_path (src, dest, mesh):
-	for box in mesh['boxes']:
-		if contains_point (src, box):
-			src_box = box
-		if contains_point (dest, box):
-			dest_box = box
-	path = dijkstras_shortest_path (src_box, dest_box, mesh, navigation_edges)
-	return ([src, dest], path)
+    for box in mesh['boxes']:
+        if contains_point (src, box):
+            src_box = box
+        if contains_point (dest, box):
+            dest_box = box
+    path = dijkstras_shortest_path (src_box, dest_box, mesh, navigation_edges)
+    if not path[0]: path = path[1:]
+    output = "Source: {} ; Dest: {} ; Path: \n {}".format( str(src_box), str(dest_box), str(path) )
+    print (output)
+    point_path = []
+    for i in range(len(path) - 1):
+        x1, y1 = midpoint(path[i])
+        if path[i] == src_box:
+            x1, y1 = src
+        x2, y2 = midpoint(path[i+1])
+        if path[i+1] == dest_box:
+            x2, y2 = dest
+        point_path.append( ((x1, y1), (x2, y2)) )
+    return (point_path, path)
 
 # Adapated from dist_Point_to_Segment in:
 # http://geomalgorithms.com/a02-_lines.html
@@ -119,3 +131,7 @@ def vector_dist (p1, p2):
     x1,y1 = p1
     x2,y2 = p2
     return sqrt ((x2 - x1)**2 + (y2 - y1)**2)
+
+def midpoint (box):
+    x1,x2,y1,y2 = box
+    return ((x1 + x2) / float(2), (y1 + y2) / float(2))
