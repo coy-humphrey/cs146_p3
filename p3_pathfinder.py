@@ -1,7 +1,7 @@
 from heapq import heappop, heappush
 from math import sqrt
 
-def dijkstras_shortest_path(initial_position, destination, graph, adj):
+def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_xy, dest_xy):
     """ Searches for a minimal cost path through a graph using Dijkstra's algorithm.
 
     Args:
@@ -19,6 +19,7 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj):
     distances = {initial_position: 0}           # Table of distances to cells 
     previous_cell = {initial_position: None}    # Back links from cells to predecessors
     queue = [(0, initial_position)]             # The heap/priority queue used
+    detail_points = {initial_position: initial_xy}
 
     # Initial distance for starting position
     distances[initial_position] = 0
@@ -31,13 +32,16 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj):
         if current_node == destination:
             node = destination
             path = []
+            point_path = [dest_xy]
             while node is not None:
                 path.append(node)
+                point_path.append (detail_points[node])
                 node = previous_cell[node]
-            return path[::-1]
+            point_path.reverse()
+            return (list(zip (point_path, point_path[1:])), path[::-1])
 
         # Calculate tentative distances to adjacent cells
-        for adjacent_node, edge_cost in adj(graph, current_node):
+        for adjacent_node, edge_cost, detail_point in adj(graph, current_node, detail_points[current_node]):
             new_distance = current_distance + edge_cost
 
             if adjacent_node not in distances or new_distance < distances[adjacent_node]:
@@ -45,13 +49,18 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj):
                 distances[adjacent_node] = new_distance
                 previous_cell[adjacent_node] = current_node
                 heappush(queue, (new_distance, adjacent_node))
+                detail_points[adjacent_node] = detail_point
                     
     # Failed to find a path
     print("Failed to find a path from", initial_position, "to", destination)
     return None
 
-def navigation_edges (mesh, box):
-    return [(new_box, 1) for new_box in mesh['adj'][box]]
+def navigation_edges (mesh, box, current_point):
+    result = []
+    for adj_box in mesh['adj'][box]:
+        dp, dist = shortest_path_to_segment (current_point, get_border(box, adj_box))
+        result.append ((adj_box, dist, dp))
+    return result
 
 
 def contains_point (pnt, box):
@@ -69,19 +78,26 @@ def find_path (src, dest, mesh):
     if not src_box or not dest_box:
         print ("Bad source or destination")
         return ([], [])
-    path = dijkstras_shortest_path (src_box, dest_box, mesh, navigation_edges)
+    path = dijkstras_shortest_path (src_box, dest_box, mesh, navigation_edges, src, dest)
     if not path:
         return ([], [])
-    point_path = []
-    for i in range(len(path) - 1):
-        x1, y1 = midpoint(path[i])
-        if path[i] == src_box:
-            x1, y1 = src
-        x2, y2 = midpoint(path[i+1])
-        if path[i+1] == dest_box:
-            x2, y2 = dest
-        point_path.append( ((x1, y1), (x2, y2)) )
-    return (point_path, path)
+    print (len(path[0]), len(path[1]))
+    print (path[0], "\n\n\n", path[1])
+    return path
+
+def get_border (box1, box2):
+    b1x1, b1x2, b1y1, b1y2 = box1
+    b2x1, b2x2, b2y1, b2y2 = box2
+    xborder = (max (b1x1, b2x1), min (b1x2, b2x2))
+    yborder = (max (b1y1, b2y1), min (b1y2, b2y2))
+    is_xborder = xborder[1] - xborder[0] > 0
+    is_yborder = yborder[1] - yborder[0] > 0
+    if is_xborder:
+        segment = ((xborder[0], b1y1), (xborder[1], b1y1))
+    else:
+        segment = ((b1x1, yborder[0]), (b1x1, yborder[1]))
+    return segment
+
 
 # Adapated from dist_Point_to_Segment in:
 # http://geomalgorithms.com/a02-_lines.html
@@ -92,8 +108,9 @@ def shortest_path_to_segment (entry_point, segment):
         segment: A line segment. A tuple containing ((x1, y1), (x2,y2))
 
     Returns:
-        If a path exits, return a list containing all cells from initial_position to destination.
-        Otherwise, return None.
+        Returns a tuple containing:
+            1. The point on the line segment closest to entry_point
+            2. The distance between entry_point and the point above
     """
     start, end = segment
     v = vector_subtract (end, start)
@@ -107,7 +124,7 @@ def shortest_path_to_segment (entry_point, segment):
     if (c2 <= c1):
         return (end, vector_dist (entry_point, end))
 
-    b = c1 / float(c2)
+    b = float(c1) / float(c2)
     Pb = vector_add (start, vector_scalar_multiply(b, v))
     return (Pb, vector_dist (entry_point, Pb))
 
