@@ -16,6 +16,9 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_x
 
     """
 
+    def heuristic (curr, dest):
+        return vector_dist (curr, dest)
+
     distances = {initial_position: 0}           # Table of distances to cells 
     previous_cell = {initial_position: None}    # Back links from cells to predecessors
     queue = [(0, initial_position)]             # The heap/priority queue used
@@ -42,13 +45,13 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_x
 
         # Calculate tentative distances to adjacent cells
         for adjacent_node, edge_cost, detail_point in adj(graph, current_node, detail_points[current_node]):
-            new_distance = current_distance + edge_cost
+            new_distance = distances[current_node] + edge_cost
 
             if adjacent_node not in distances or new_distance < distances[adjacent_node]:
                 # Assign new distance and update link to previous cell
                 distances[adjacent_node] = new_distance
                 previous_cell[adjacent_node] = current_node
-                heappush(queue, (new_distance, adjacent_node))
+                heappush(queue, (new_distance + heuristic (detail_point, dest_xy), adjacent_node))
                 detail_points[adjacent_node] = detail_point
                     
     # Failed to find a path
@@ -81,8 +84,6 @@ def find_path (src, dest, mesh):
     path = dijkstras_shortest_path (src_box, dest_box, mesh, navigation_edges, src, dest)
     if not path:
         return ([], [])
-    print (len(path[0]), len(path[1]))
-    print (path[0], "\n\n\n", path[1])
     return path
 
 def get_border (box1, box2):
