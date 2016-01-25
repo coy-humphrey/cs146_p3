@@ -15,14 +15,14 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_x
         Otherwise, return None.
 
     """
-
+    # heuristic just uses euclidian distance
     def heuristic (curr, dest):
         return vector_dist (curr, dest)
 
-    distances = {initial_position: 0}           # Table of distances to cells 
-    previous_cell = {initial_position: None}    # Back links from cells to predecessors
-    queue = [(0, initial_position)]             # The heap/priority queue used
-    detail_points = {initial_position: initial_xy}
+    distances = {initial_position: 0}             # Table of distances to cells 
+    previous_cell = {initial_position: None}      # Back links from cells to predecessors
+    queue = [(0, initial_position)]               # The heap/priority queue used
+    detail_points = {initial_position: initial_xy}# Holds the entry point into each cell
 
     # Initial distance for starting position
     distances[initial_position] = 0
@@ -35,13 +35,19 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_x
         if current_node == destination:
             node = destination
             path = []
+            # Add in the destination, because it does not exist in detail_points
             point_path = [dest_xy]
             while node is not None:
                 path.append(node)
                 point_path.append (detail_points[node])
                 node = previous_cell[node]
+            # Nodes and detail points added in reverse order, so reverse both lists
             point_path.reverse()
-            return (list(zip (point_path, point_path[1:])), path[::-1])
+            path.reverse()
+            # format of point_path is [((x1,y1), (x2,y2)), ((x2,y2), (x3,y3)), ((x3,y3), (x4,y4))...]
+            # This can be created by zipping point_path with point_path[1:] (which throws away the first element)
+            point_path = list(zip(point_path, point_path[1:]))
+            return (point_path, path)
 
         # Calculate tentative distances to adjacent cells
         for adjacent_node, edge_cost, detail_point in adj(graph, current_node, detail_points[current_node]):
@@ -51,6 +57,7 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_x
                 # Assign new distance and update link to previous cell
                 distances[adjacent_node] = new_distance
                 previous_cell[adjacent_node] = current_node
+                # For priority, use distance + heuristic
                 heappush(queue, (new_distance + heuristic (detail_point, dest_xy), adjacent_node))
                 detail_points[adjacent_node] = detail_point
                     
@@ -61,8 +68,8 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_x
 def navigation_edges (mesh, box, current_point):
     result = []
     for adj_box in mesh['adj'][box]:
-        dp, dist = shortest_path_to_segment (current_point, get_border(box, adj_box))
-        result.append ((adj_box, dist, dp))
+        closest_point , dist = shortest_path_to_segment (current_point, get_border(box, adj_box))
+        result.append ((adj_box, dist, closest_point))
     return result
 
 
@@ -86,7 +93,16 @@ def find_path (src, dest, mesh):
         return ([], [])
     return path
 
+# Adapted from the project description
 def get_border (box1, box2):
+    """ Finds the line segment where box1 and box2 overlap
+    Args:
+        box1: The first box
+        box2: The second box
+
+    Returns:
+        Returns the line segment where box1 and box2 overlap
+    """
     b1x1, b1x2, b1y1, b1y2 = box1
     b2x1, b2x2, b2y1, b2y2 = box2
     xborder = (max (b1x1, b2x1), min (b1x2, b2x2))
@@ -101,7 +117,6 @@ def get_border (box1, box2):
         segment = ((xborder[0], yborder[0]),(xborder[0], yborder[0]))
 
     return segment
-
 
 # Adapated from dist_Point_to_Segment in:
 # http://geomalgorithms.com/a02-_lines.html
@@ -133,29 +148,70 @@ def shortest_path_to_segment (entry_point, segment):
     return (Pb, vector_dist (entry_point, Pb))
 
 def vector_subtract (p1, p2):
+    """ Performs vector subtraction on the two vectors
+    Args:
+        p1: The first vector. An (x,y) tuple
+        p2: The second vector. An (x,y) tuple
+
+    Returns:
+        Returns the difference of the two vectors. p1 - p2
+    """
     x1,y1 = p1
     x2,y2 = p2
     return (x1-x2, y1-y2)
 
 def vector_add (p1, p2):
+    """ Performs vector addition on the two vectors
+    Args:
+        p1: The first vector. An (x,y) tuple
+        p2: The second vector. An (x,y) tuple
+
+    Returns:
+        Returns the sum of the two vectors
+    """
     x1,y1 = p1
     x2,y2 = p2
     return (x1+x2, y1+y2)
 
 def vector_scalar_multiply (scalar, vector):
+    """ Gives the scalar product of the given scalar and vector
+    Args:
+        scalar: The scalar value to multiple vector by
+        vector: The vector to be multiplied. An (x,y) tuple.
+
+    Returns:
+        Returns the scalar product of scalar and vector
+    """
     x,y = vector
     return (scalar * x, scalar * y)
 
 def vector_dot (p1, p2):
+    """ Gives the vector dot product of the two vectors
+    Args:
+        p1: The first vector. An (x,y) tuple
+        p2: The second vector. An (x,y) tuple
+
+    Returns:
+        Returns dot product of the two vectors
+    """
     x1,y1 = p1
     x2,y2 = p2
     return x1*x2 + y1*y2
 
 def vector_dist (p1, p2):
+    """ Gives the euclidian distance between p1 and p2
+    Args:
+        p1: The first point. An (x,y) tuple
+        p2: The second point. An (x,y) tuple
+
+    Returns:
+        Returns the euclidian distance.
+    """
     x1,y1 = p1
     x2,y2 = p2
     return sqrt ((x2 - x1)**2 + (y2 - y1)**2)
 
+# Used for early testing, no longer used
 def midpoint (box):
     x1,x2,y1,y2 = box
     return ((x1 + x2) / float(2), (y1 + y2) / float(2))
