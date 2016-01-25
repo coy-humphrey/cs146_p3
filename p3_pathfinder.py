@@ -93,9 +93,12 @@ def get_border (box1, box2):
     is_xborder = xborder[1] - xborder[0] > 0
     is_yborder = yborder[1] - yborder[0] > 0
     if is_xborder:
-        segment = ((xborder[0], b1y1), (xborder[1], b1y1))
+        segment = ((xborder[0], yborder[0]), (xborder[1], yborder[0]))
+    elif is_yborder:
+        segment = ((xborder[0], yborder[0]), (xborder[0], yborder[1]))
     else:
-        segment = ((b1x1, yborder[0]), (b1x1, yborder[1]))
+        segment = ((xborder[0], yborder[0]),(xborder[0], yborder[0]))
+
     return segment
 
 
