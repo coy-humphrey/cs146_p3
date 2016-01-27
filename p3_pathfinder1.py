@@ -28,46 +28,35 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_x
     f_detail_points = {initial_position: initial_xy}        # Holds the entry point into each cell
     b_detail_points = {destination: dest_xy}
 
-    # Initial distance for starting position
-#    forward_dist[initial_position] = 0
-
-    # if going forward:
-    #    if box in backward_prev:
-    #          end search; tie paths together, return
-    # if going backward:
-    #   if box in forward_prev:
-    #           end search etc
+    explored_boxes = []
 
     while queue:
         # Continue with next min unvisited node
         current_distance, current_node, goal = heappop(queue)
+        explored_boxes.append (current_node)
         # If we've reached the opposite frontier
         if (goal == 'destination' and current_node in backward_prev) or (goal == 'initial_position' and current_node in forward_prev):
             node = current_node
-            path = []
             # Build the path from the final point in the backward frontier
             # to the src node
             point_path = [b_detail_points[current_node]]
             while node is not None:
-                path.append(node)
                 point_path.append(f_detail_points[node])
                 node = forward_prev[node]
             # This path goes from end to beginning, so reverse it
             point_path.reverse()
-            path.reverse()
 
             # Now append the path from the final point in the backward frontier
             # to the destination node
             node = backward_prev[current_node]
             while node is not None:
-                path.append(node)
                 point_path.append(b_detail_points[node])
                 node = backward_prev[node]
 
             # format of point_path is [((x1,y1), (x2,y2)), ((x2,y2), (x3,y3)), ((x3,y3), (x4,y4))...]
             # This can be created by zipping point_path with point_path[1:] (which throws away the first element)
             point_path = list(zip(point_path, point_path[1:]))
-            return (point_path, path)
+            return (point_path, explored_boxes)
 
         # Assigning the various variables to the values they should be depending on
         # which way we are going

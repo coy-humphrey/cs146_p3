@@ -1,66 +1,84 @@
+# cs146_p3
 from heapq import heappop, heappush
 from math import sqrt
 
 def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_xy, dest_xy):
     """ Searches for a minimal cost path through a graph using Dijkstra's algorithm.
-
     Args:
         initial_position: The initial cell from which the path extends.
         destination: The end location for the path.
         graph: A loaded level, containing walls, spaces, and waypoints.
         adj: An adjacency function returning cells adjacent to a given cell as well as their respective edge costs.
-
+        initial_xy: The initial xy coordinates within the initial_position cell
+        dest_xy: The destination xy coordinates witihin the destination cell
     Returns:
         If a path exists, return a list containing all cells from initial_position to destination.
         Otherwise, return None.
-
     """
     # heuristic just uses euclidian distance
     def heuristic (curr, dest):
         return vector_dist (curr, dest)
 
-    distances = {initial_position: 0}             # Table of distances to cells 
-    previous_cell = {initial_position: None}      # Back links from cells to predecessors
-    queue = [(0, initial_position)]               # The heap/priority queue used
-    detail_points = {initial_position: initial_xy}# Holds the entry point into each cell
+    forward_dist = {initial_position: 0}                    # Distance from initial_position when searching "forward"
+    backward_dist = {destination: 0}                        # Distance from destination when searching "backward"
+    forward_prev = {initial_position: None}                 # Back links from the "forward" direction
+    backward_prev = {destination: None}                     # Back links from the "backward" direction
+    queue = [(0, initial_position, 'destination')]          # The heap/priority queue used
+    heappush(queue, (1, destination, 'initial_position'))
+    f_detail_points = {initial_position: initial_xy}        # Holds the entry point into each cell
+    b_detail_points = {destination: dest_xy}
 
-    # Initial distance for starting position
-    distances[initial_position] = 0
+    explored_boxes = []
 
     while queue:
         # Continue with next min unvisited node
-        current_distance, current_node = heappop(queue)
-        
-        # Early termination check: if the destination is found, return the path
-        if current_node == destination:
-            node = destination
-            path = []
-            # Add in the destination, because it does not exist in detail_points
-            point_path = [dest_xy]
+        current_distance, current_node, goal = heappop(queue)
+        explored_boxes.append (current_node)
+        # If we've reached the opposite frontier
+        if (goal == 'destination' and current_node in backward_prev) or (goal == 'initial_position' and current_node in forward_prev):
+            node = current_node
+            # Build the path from the final point in the backward frontier
+            # to the src node
+            point_path = [b_detail_points[current_node]]
             while node is not None:
-                path.append(node)
-                point_path.append (detail_points[node])
-                node = previous_cell[node]
-            # Nodes and detail points added in reverse order, so reverse both lists
+                point_path.append(f_detail_points[node])
+                node = forward_prev[node]
+            # This path goes from end to beginning, so reverse it
             point_path.reverse()
-            path.reverse()
+
+            # Now append the path from the final point in the backward frontier
+            # to the destination node
+            node = backward_prev[current_node]
+            while node is not None:
+                point_path.append(b_detail_points[node])
+                node = backward_prev[node]
+
             # format of point_path is [((x1,y1), (x2,y2)), ((x2,y2), (x3,y3)), ((x3,y3), (x4,y4))...]
             # This can be created by zipping point_path with point_path[1:] (which throws away the first element)
             point_path = list(zip(point_path, point_path[1:]))
-            return (point_path, path)
+            return (point_path, explored_boxes)
 
+        # Assigning the various variables to the values they should be depending on
+        # which way we are going
+        is_dest = goal == 'destination'
+
+        detail_points = f_detail_points if is_dest else b_detail_points
+        dist = forward_dist if is_dest else backward_dist
+        prev = forward_prev if is_dest else backward_prev
+        dest = dest_xy if is_dest else initial_xy
+        dest_id = goal
         # Calculate tentative distances to adjacent cells
         for adjacent_node, edge_cost, detail_point in adj(graph, current_node, detail_points[current_node]):
-            new_distance = distances[current_node] + edge_cost
+            new_distance = dist[current_node] + edge_cost
 
-            if adjacent_node not in distances or new_distance < distances[adjacent_node]:
+            if adjacent_node not in dist or new_distance < dist[adjacent_node]:
                 # Assign new distance and update link to previous cell
-                distances[adjacent_node] = new_distance
-                previous_cell[adjacent_node] = current_node
+                dist[adjacent_node] = new_distance
+                prev[adjacent_node] = current_node
                 # For priority, use distance + heuristic
-                heappush(queue, (new_distance + heuristic (detail_point, dest_xy), adjacent_node))
+                heappush(queue, (new_distance + heuristic (detail_point, dest), adjacent_node, dest_id))
                 detail_points[adjacent_node] = detail_point
-                    
+
     # Failed to find a path
     print("Failed to find a path from", initial_position, "to", destination)
     return None
@@ -99,7 +117,6 @@ def get_border (box1, box2):
     Args:
         box1: The first box
         box2: The second box
-
     Returns:
         Returns the line segment where box1 and box2 overlap
     """
@@ -125,7 +142,6 @@ def shortest_path_to_segment (entry_point, segment):
     Args:
         entry_point: Starting point. A tuple containing (x, y)
         segment: A line segment. A tuple containing ((x1, y1), (x2,y2))
-
     Returns:
         Returns a tuple containing:
             1. The point on the line segment closest to entry_point
@@ -152,7 +168,6 @@ def vector_subtract (p1, p2):
     Args:
         p1: The first vector. An (x,y) tuple
         p2: The second vector. An (x,y) tuple
-
     Returns:
         Returns the difference of the two vectors. p1 - p2
     """
@@ -165,7 +180,6 @@ def vector_add (p1, p2):
     Args:
         p1: The first vector. An (x,y) tuple
         p2: The second vector. An (x,y) tuple
-
     Returns:
         Returns the sum of the two vectors
     """
@@ -178,7 +192,6 @@ def vector_scalar_multiply (scalar, vector):
     Args:
         scalar: The scalar value to multiple vector by
         vector: The vector to be multiplied. An (x,y) tuple.
-
     Returns:
         Returns the scalar product of scalar and vector
     """
@@ -190,7 +203,6 @@ def vector_dot (p1, p2):
     Args:
         p1: The first vector. An (x,y) tuple
         p2: The second vector. An (x,y) tuple
-
     Returns:
         Returns dot product of the two vectors
     """
@@ -203,15 +215,9 @@ def vector_dist (p1, p2):
     Args:
         p1: The first point. An (x,y) tuple
         p2: The second point. An (x,y) tuple
-
     Returns:
         Returns the euclidian distance.
     """
     x1,y1 = p1
     x2,y2 = p2
     return sqrt ((x2 - x1)**2 + (y2 - y1)**2)
-
-# Used for early testing, no longer used
-def midpoint (box):
-    x1,x2,y1,y2 = box
-    return ((x1 + x2) / float(2), (y1 + y2) / float(2))
