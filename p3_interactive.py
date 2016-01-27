@@ -5,7 +5,7 @@ import traceback
 import tkinter
 
 # from p3_pathfinder1 import find_path
-from p3_pathfinder import find_path
+from p3_pathfinder1 import find_path
 
 if len(sys.argv) != 4:
     print("usage: %s map.gif map.mesh.pickle subsample_factor" % sys.argv[0])
