@@ -9,6 +9,8 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_x
         destination: The end location for the path.
         graph: A loaded level, containing walls, spaces, and waypoints.
         adj: An adjacency function returning cells adjacent to a given cell as well as their respective edge costs.
+        initial_xy: The initial xy coordinates within the initial_position cell
+        dest_xy: The destination xy coordinates witihin the destination cell
     Returns:
         If a path exists, return a list containing all cells from initial_position to destination.
         Otherwise, return None.
@@ -39,92 +41,44 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_x
     while queue:
         # Continue with next min unvisited node
         current_distance, current_node, goal = heappop(queue)
-        if goal == 'destination':
-            if current_node in backward_prev:
-                node = current_node
-                path = []
-                # Instead of using stitch, just start with the node's
-                # detail point from the opposite search
-                point_path = [b_detail_points[current_node]]
-                while node is not None:
-                    path.append(node)
-                    point_path.append(f_detail_points[node])
-                    node = forward_prev[node]
-                point_path.reverse()
-                path.reverse()
-
-                node = backward_prev[current_node]
-
-                while node is not None:
-                    path.append(node)
-                    point_path.append(b_detail_points[node])
-                    node = backward_prev[node]
-                point_path.append(b_detail_points[destination])
-                point_path = list(zip(point_path, point_path[1:]))
-                return (point_path, path)
-
-        else:
-            if current_node in forward_prev:
-                node = current_node
-                path = [current_node]
-                point_path = [f_detail_points[current_node]]
-
-                while node is not None:
-                    path.append(node)
-                    point_path.append(b_detail_points[node])
-                    node = backward_prev[node]
-                point_path.append(b_detail_points[destination])
-                point_path.reverse()
-                path.reverse()
-
-                node = forward_prev[current_node]
-
-                while node is not None:
-                    path.append(node)
-                    point_path.append(f_detail_points[node])
-                    node = forward_prev[node]
-                point_path.append(f_detail_points[initial_position])
-                point_path.reverse()
-                path.reverse()
-                point_path = list(zip(point_path, point_path[1:]))
-                return (point_path, path)
-
-        """
-        # Early termination check: if the destination is found, return the path
-#        if current_node == destination:
-#            node = destination
-        if current_node == initial_position:
-            node = initial_position
+        # If we've reached the opposite frontier
+        if (goal == 'destination' and current_node in backward_prev) or (goal == 'initial_position' and current_node in forward_prev):
+            node = current_node
             path = []
-            # Add in the destination, because it does not exist in detail_points
-#            point_path = [dest_xy]
-            point_path = [initial_xy]
+            # Build the path from the final point in the backward frontier
+            # to the src node
+            point_path = [b_detail_points[current_node]]
             while node is not None:
                 path.append(node)
-                point_path.append (detail_points[node])
-#                node = forward_prev[node]
-                node = backward_prev[node]
-            # Nodes and detail points added in reverse order, so reverse both lists
+                point_path.append(f_detail_points[node])
+                node = forward_prev[node]
+            # This path goes from end to beginning, so reverse it
             point_path.reverse()
             path.reverse()
+
+            # Now append the path from the final point in the backward frontier
+            # to the destination node
+            node = backward_prev[current_node]
+            while node is not None:
+                path.append(node)
+                point_path.append(b_detail_points[node])
+                node = backward_prev[node]
+
             # format of point_path is [((x1,y1), (x2,y2)), ((x2,y2), (x3,y3)), ((x3,y3), (x4,y4))...]
             # This can be created by zipping point_path with point_path[1:] (which throws away the first element)
             point_path = list(zip(point_path, point_path[1:]))
             return (point_path, path)
-            """
-        if goal == 'destination':
-            detail_points = f_detail_points
-            dist = forward_dist
-            prev = forward_prev
-            dest = dest_xy
-            dest_id = 'destination'
-        else:
-            detail_points = b_detail_points
-            dist = backward_dist
-            prev = backward_prev
-            dest = initial_xy
-            dest_id = 'initial_position'
-            # Calculate tentative distances to adjacent cells
+
+        # Assigning the various variables to the values they should be depending on
+        # which way we are going
+        is_dest = goal == 'destination'
+
+        detail_points = f_detail_points if is_dest else b_detail_points
+        dist = forward_dist if is_dest else backward_dist
+        prev = forward_prev if is_dest else backward_prev
+        dest = dest_xy if is_dest else initial_xy
+        dest_id = goal
+        # Calculate tentative distances to adjacent cells
         for adjacent_node, edge_cost, detail_point in adj(graph, current_node, detail_points[current_node]):
             new_distance = dist[current_node] + edge_cost
 
@@ -135,8 +89,6 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj, initial_x
                 # For priority, use distance + heuristic
                 heappush(queue, (new_distance + heuristic (detail_point, dest), adjacent_node, dest_id))
                 detail_points[adjacent_node] = detail_point
-
-                b_detail_points[adjacent_node] = detail_point
 
     # Failed to find a path
     print("Failed to find a path from", initial_position, "to", destination)
@@ -280,45 +232,3 @@ def vector_dist (p1, p2):
     x1,y1 = p1
     x2,y2 = p2
     return sqrt ((x2 - x1)**2 + (y2 - y1)**2)
-
-# Will stitch together forward detail points with backward detail points
-def stitch (point, curr_box, adj_box):
-    """
-        Args:
-            point: the detail_point in the current box
-            curr_box: the current (furthest) box in forward/backward search
-            adj_box: the furthest box in backward/forward search
-        Returns:
-            returns the detail_point that connects the detail_points
-            from forward search with the ones from backward search
-    """
-    px, py = point
-    cx1, cx2, cy1, cy2 = curr_box
-    if adj_box == None:
-        ax1, ax2, ay1, ay2 = curr_box
-    else:
-        ax1, ax2, ay1, ay2 = adj_box
-    newpx = px
-    newpy = py
-
-    xrange = (max(cx1, ax1), min(cx2, ax2))
-    if px <= xrange[0]:
-        newpx = xrange[0]
-
-    elif px >= xrange[1]:
-        newpx = xrange[1]
-
-    elif xrange[0] < px < xrange[1]:
-        newpx = px
-
-    yrange = (max(cy1, ay1), min(cy2, ay2))
-    if py <= yrange[0]:
-        newpy = yrange[0]
-
-    elif py >= yrange[1]:
-        newpy = yrange[1]
-
-    elif yrange[0] < py < yrange[1]:
-        newpy = py
-
-    return (newpx, newpy)
